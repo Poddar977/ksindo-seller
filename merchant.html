@@ -1,0 +1,1944 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#ea580c">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="KSINDO Merchant">
+    <!-- Separate Manifest so both Customer & Merchant Apps install independently -->
+    <link rel="manifest" href="merchant-manifest.json">
+    <link rel="apple-touch-icon" href="https://poddar977.github.io/jaynagarbazar/logo.png">
+    <title>KSINDO Merchant & Store Partner App</title>
+
+    <!-- Firebase Compat SDKs + Messaging + External Config File -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
+    <script src="firebase-config.js"></script>
+
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI', Roboto, sans-serif; -webkit-tap-highlight-color:transparent; }
+        body { background:#f1f5f9; color:#0f172a; padding-bottom:85px; }
+
+        /* HEADER */
+        header {
+            background:linear-gradient(135deg, #ea580c, #c2410c); color:white;
+            padding:13px 16px; display:flex; justify-content:space-between; align-items:center;
+            position:sticky; top:0; z-index:1000; box-shadow:0 3px 12px rgba(234,88,12,0.28);
+        }
+        .brand h1 { font-size:18px; font-weight:900; letter-spacing:0.5px; }
+        .brand small { display:block; font-size:11px; opacity:0.92; font-weight:600; }
+        .header-btns { display:flex; gap:8px; align-items:center; }
+        .btn-pill {
+            background:rgba(255,255,255,0.22); border:1px solid rgba(255,255,255,0.5);
+            color:white; padding:6px 12px; border-radius:20px; font-size:11px; font-weight:800; cursor:pointer;
+        }
+        .btn-pill.white { background:white; color:#ea580c; border:none; }
+
+        /* AUTH SCREEN */
+        .auth-wrapper { max-width:480px; margin:20px auto; padding:0 14px; }
+        .auth-card {
+            background:white; border-radius:20px; padding:22px 18px;
+            box-shadow:0 10px 30px rgba(15,23,42,0.08); border:1.5px solid #fed7aa;
+        }
+        .auth-tabs { display:grid; grid-template-columns:1fr 1fr; background:#fff7ed; padding:4px; border-radius:12px; margin-bottom:18px; }
+        .auth-tab {
+            padding:10px; text-align:center; font-size:13px; font-weight:800;
+            border-radius:10px; cursor:pointer; color:#9a3412; transition:0.2s;
+        }
+        .auth-tab.active { background:#ea580c; color:white; box-shadow:0 2px 8px rgba(234,88,12,0.3); }
+
+        .form-group { margin-bottom:12px; }
+        .form-group label { display:block; font-size:12px; font-weight:700; color:#334155; margin-bottom:4px; }
+        .req { color:#dc2626; }
+        .form-group input, .form-group select, .form-group textarea {
+            width:100%; padding:10px 12px; border:1.5px solid #cbd5e1; border-radius:10px;
+            font-size:13px; outline:none; background:#fff; transition:0.2s;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color:#ea580c; }
+
+        .otp-row { display:flex; gap:8px; }
+        .otp-row input { flex:1; }
+        .btn-otp {
+            background:#0f172a; color:white; border:none; padding:0 14px;
+            border-radius:10px; font-size:12px; font-weight:800; cursor:pointer; white-space:nowrap;
+        }
+        .btn-otp:disabled { background:#94a3b8; cursor:not-allowed; }
+
+        .otp-hint-box {
+            display:none; background:#eff6ff; border:1px dashed #3b82f6; color:#1e40af;
+            padding:8px 10px; border-radius:8px; font-size:12px; font-weight:700; margin-top:6px;
+        }
+
+        .btn-primary {
+            width:100%; background:#ea580c; color:white; border:none; padding:13px;
+            border-radius:12px; font-size:14px; font-weight:800; cursor:pointer; margin-top:6px;
+            box-shadow:0 4px 12px rgba(234,88,12,0.3);
+        }
+        .btn-primary:disabled { background:#cbd5e1; box-shadow:none; cursor:not-allowed; }
+
+        .status-banner {
+            display:none; padding:12px; border-radius:12px; font-size:12px; font-weight:700;
+            margin-bottom:14px; line-height:1.4;
+        }
+        .status-banner.pending { display:block; background:#fef3c7; color:#92400e; border:1px solid #f59e0b; }
+        .status-banner.error { display:block; background:#fee2e2; color:#991b1b; border:1px solid #ef4444; }
+
+        /* MERCHANT DASHBOARD */
+        #merchantDashboard { display:none; max-width:1040px; margin:16px auto; padding:0 14px; }
+        .shop-summary-bar {
+            background:white; border-radius:16px; padding:14px 16px; margin-bottom:14px;
+            border:1.5px solid #fed7aa; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;
+        }
+        .shop-badges { display:flex; gap:6px; flex-wrap:wrap; margin-top:4px; }
+        .badge { font-size:11px; font-weight:800; padding:3px 9px; border-radius:12px; }
+        .badge-pin { background:#ffedd5; color:#c2410c; }
+        .badge-cat { background:#e0f2fe; color:#0369a1; }
+        .badge-ksindo { background:#fef3c7; color:#b45309; border:1px solid #f59e0b; }
+        .badge-live { background:#dcfce7; color:#15803d; }
+
+        .alert-bar {
+            background:#0f172a; color:white; padding:10px 14px; border-radius:12px;
+            margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; font-size:12px; gap:10px; flex-wrap:wrap;
+        }
+
+        /* DASHBOARD TABS */
+        .dash-nav {
+            display:grid; grid-template-columns:repeat(5, 1fr); gap:6px; margin-bottom:16px;
+        }
+        @media(max-width:650px) {
+            .dash-nav { grid-template-columns:repeat(3, 1fr); }
+        }
+        .dash-tab-btn {
+            background:white; border:1.5px solid #e2e8f0; padding:10px 6px; border-radius:12px;
+            font-size:11.5px; font-weight:800; color:#475569; cursor:pointer; text-align:center;
+        }
+        .dash-tab-btn.active { background:#ea580c; color:white; border-color:#ea580c; }
+
+        /* ORDER CARDS */
+        .order-card {
+            background:white; border-radius:16px; padding:15px; margin-bottom:14px;
+            border-left:5px solid #ea580c; box-shadow:0 3px 10px rgba(0,0,0,0.06);
+        }
+        .order-top { display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #f1f5f9; padding-bottom:8px; margin-bottom:8px; }
+        .order-status { font-size:11px; font-weight:800; padding:3px 10px; border-radius:12px; background:#ffedd5; color:#c2410c; }
+        .order-items-preview {
+            display:flex; gap:8px; overflow-x:auto; padding:8px 0; margin:6px 0;
+        }
+        .mini-item-chip {
+            display:flex; align-items:center; gap:8px; background:#f8fafc; border:1px solid #e2e8f0;
+            padding:6px 10px; border-radius:10px; min-width:170px; flex-shrink:0;
+        }
+        .mini-item-chip img { width:40px; height:40px; border-radius:6px; object-fit:cover; background:white; }
+
+        /* DELIVERY BOY ASSIGN BAR */
+        .assign-boy-box {
+            display:flex; gap:6px; align-items:center; background:#eff6ff;
+            border:1px solid #bfdbfe; padding:8px 10px; border-radius:10px; margin:10px 0; flex-wrap:wrap;
+        }
+        .assign-boy-box input, .assign-boy-box select {
+            padding:7px 10px; border:1px solid #93c5fd; border-radius:8px; font-size:12px; background:white; outline:none;
+        }
+
+        .order-actions { display:flex; gap:7px; margin-top:10px; flex-wrap:wrap; }
+        .btn-sm {
+            padding:8px 11px; border:none; border-radius:8px; font-size:11px; font-weight:800; cursor:pointer; color:white;
+            display:inline-flex; align-items:center; gap:4px;
+        }
+
+        /* COLLECTION REPORT & FILTER CARDS */
+        .report-stats-grid {
+            display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px; margin-bottom:14px;
+        }
+        .rep-stat-card {
+            background:white; padding:14px; border-radius:14px; border:1px solid #e2e8f0;
+            box-shadow:0 2px 6px rgba(0,0,0,0.04);
+        }
+        .rep-stat-card small { font-size:11px; color:#64748b; font-weight:700; display:block; margin-bottom:4px; }
+        .rep-stat-card .rep-val { font-size:19px; font-weight:900; color:#0f172a; }
+
+        .filter-bar-card {
+            background:white; padding:14px; border-radius:14px; border:1px solid #cbd5e1;
+            margin-bottom:14px; display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;
+        }
+        .filter-bar-card .f-field { flex:1; min-width:130px; }
+        .filter-bar-card label { display:block; font-size:11px; font-weight:700; color:#475569; margin-bottom:3px; }
+        .filter-bar-card input, .filter-bar-card select {
+            width:100%; padding:8px 10px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:12px; background:white;
+        }
+
+        .ledger-table-wrap {
+            background:white; border-radius:14px; border:1px solid #e2e8f0; overflow-x:auto;
+        }
+        .ledger-table { width:100%; border-collapse:collapse; font-size:12px; text-align:left; }
+        .ledger-table th { background:#f8fafc; padding:10px 12px; border-bottom:1px solid #e2e8f0; color:#475569; font-weight:800; }
+        .ledger-table td { padding:10px 12px; border-bottom:1px solid #f1f5f9; }
+
+        /* ADMIN-STYLE PRODUCT CATALOG FORM */
+        .prod-form-card { background:white; border-radius:16px; padding:18px; border:1px solid #cbd5e1; margin-bottom:16px; }
+        .form-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:12px; }
+        .cat-checkbox-group {
+            display:flex; gap:10px; flex-wrap:wrap; background:#f8fafc;
+            padding:10px 12px; border-radius:10px; border:1.5px solid #cbd5e1;
+        }
+        .cat-checkbox-group label {
+            display:flex; align-items:center; gap:5px; font-size:12px; font-weight:700;
+            cursor:pointer; color:#1e293b; margin:0;
+        }
+        .cat-checkbox-group input { width:auto; }
+        .preview-grid { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+        .preview-box { width:60px; height:60px; border-radius:8px; border:2px solid #16a34a; object-fit:cover; }
+
+        .variant-box {
+            margin-top:14px; padding:14px; background:#fff7ed;
+            border:1.5px dashed #ea580c; border-radius:12px;
+        }
+        .variant-row {
+            display:grid; grid-template-columns:1.2fr 1fr 1fr 0.9fr auto;
+            gap:6px; align-items:center; margin-bottom:8px; background:white;
+            padding:7px; border-radius:8px; border:1px solid #fed7aa;
+        }
+        .variant-row input { padding:7px 9px; font-size:12px; border:1px solid #cbd5e1; border-radius:6px; width:100%; }
+
+        .prod-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(270px, 1fr)); gap:12px; }
+        .prod-item-card {
+            background:white; border-radius:14px; padding:12px; border:1px solid #e2e8f0;
+            display:flex; gap:10px; align-items:center;
+        }
+        .prod-item-card img { width:70px; height:70px; object-fit:cover; border-radius:10px; background:#f8fafc; }
+        .stock-pill {
+            display:inline-block; font-size:10px; font-weight:800; padding:2px 8px; border-radius:10px; margin-top:4px;
+        }
+        .in-stock { background:#dcfce7; color:#15803d; }
+        .out-stock { background:#fee2e2; color:#b91c1c; }
+
+        /* VIEW ORDER ITEMS MODAL */
+        .modal-overlay {
+            position:fixed; inset:0; background:rgba(15,23,42,0.75); display:none;
+            justify-content:center; align-items:center; z-index:9999; padding:16px;
+        }
+        .modal-overlay.active { display:flex; }
+        .modal-box {
+            background:white; border-radius:18px; padding:20px; width:100%; max-width:500px;
+            max-height:88vh; overflow-y:auto; box-shadow:0 15px 35px rgba(0,0,0,0.35);
+        }
+        .view-prod-row {
+            display:flex; gap:12px; align-items:center; padding:10px; border:1px solid #e2e8f0;
+            border-radius:12px; margin-bottom:10px; background:#f8fafc;
+        }
+        .view-prod-row img {
+            width:68px; height:68px; object-fit:cover; border-radius:10px; border:1px solid #cbd5e1; background:white;
+        }
+
+        /* FLOATING PWA DOWNLOAD BAR */
+        .pwa-download-banner {
+            position:fixed; bottom:0; left:0; right:0; background:#0f172a; color:white;
+            padding:10px 16px; display:flex; justify-content:space-between; align-items:center;
+            z-index:999; border-top:2px solid #ea580c; font-size:12px;
+        }
+
+        /* PRINTABLE RECEIPT (NO OTP SHOWN) */
+        @media print {
+            body * { visibility:hidden; }
+            #merchantPrintableBill, #merchantPrintableBill * { visibility:visible; }
+            #merchantPrintableBill {
+                position:absolute; left:0; top:0; width:76mm; font-family:monospace;
+                color:black; padding:6px; background:white;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="brand">
+            <div>
+                <h1>KSINDO Merchant</h1>
+                <small>Partner & KSINDO Store App</small>
+            </div>
+        </div>
+        <div class="header-btns">
+            <button class="btn-pill" id="installPwaBtn" onclick="installMerchantPWA()">📲 Download App</button>
+            <button class="btn-pill white" id="logoutBtn" style="display:none;" onclick="merchantLogout()">Logout</button>
+        </div>
+    </header>
+
+    <!-- ==================== 1. LOGIN & REGISTRATION SCREEN ==================== -->
+    <div class="auth-wrapper" id="authSection">
+        <div class="auth-card">
+            <div class="auth-tabs">
+                <div class="auth-tab active" id="tabLogin" onclick="switchAuthTab('login')">Merchant Login</div>
+                <div class="auth-tab" id="tabRegister" onclick="switchAuthTab('register')">Create Account</div>
+            </div>
+
+            <div id="authStatusBanner" class="status-banner"></div>
+
+            <!-- LOGIN FORM -->
+            <form id="merchantLoginForm">
+                <div class="form-group">
+                    <label>User ID <span class="req">*</span></label>
+                    <input type="text" id="loginUserId" placeholder="Apna created User ID dalein" required>
+                </div>
+                <div class="form-group">
+                    <label>Password <span class="req">*</span></label>
+                    <input type="password" id="loginPassword" placeholder="Password dalein" required>
+                </div>
+                <button type="submit" class="btn-primary" id="btnLoginSubmit">Login to Merchant Portal</button>
+            </form>
+
+            <!-- CREATE ACCOUNT FORM -->
+            <form id="merchantRegisterForm" style="display:none;">
+                <div class="form-group">
+                    <label>1. Full Name <span class="req">*</span></label>
+                    <input type="text" id="regName" placeholder="Owner / Operator ka pura naam" required>
+                </div>
+
+                <div class="form-group">
+                    <label>2. Email ID <span class="req">*</span></label>
+                    <input type="email" id="regEmail" placeholder="example@gmail.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label>3. Vendor Option <span class="req">*</span></label>
+                    <select id="regVendorType" onchange="handleVendorOptionChange()" required>
+                        <option value="">-- Vendor Type Chunein --</option>
+                        <option value="SHOP">Shop Name (Apni Dukan / Restaurant)</option>
+                        <option value="KSINDO_STORE">KSINDO Store (KSINDO Official Branch)</option>
+                    </select>
+                </div>
+
+                <!-- Sub-options if SHOP is chosen -->
+                <div id="shopDetailsWrap" style="display:none; background:#fff7ed; padding:10px; border-radius:12px; border:1px solid #fed7aa; margin-bottom:12px;">
+                    <div class="form-group">
+                        <label>Shop Category (Sub-Option) <span class="req">*</span></label>
+                        <select id="regShopCategory">
+                            <option value="">-- Category Chunein --</option>
+                            <option value="Electronic Shop">Electronic Shop</option>
+                            <option value="Mobile Shop">Mobile Shop</option>
+                            <option value="Restaurant">Restaurant</option>
+                            <option value="Kapada Dukan">Kapada Dukan</option>
+                            <option value="Shoes Shop">Shoes Shop</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label>Shop / Restaurant Name <span class="req">*</span></label>
+                        <input type="text" id="regShopName" placeholder="Apni dukan ya restaurant ka naam">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>4. GSTIN (If Available - Optional)</label>
+                    <input type="text" id="regGstin" placeholder="15-digit GST Number (Optional)" maxlength="15" style="text-transform:uppercase;">
+                </div>
+
+                <div class="form-group">
+                    <label>5. Full Shop Address <span class="req">*</span></label>
+                    <input type="text" id="regAddress" placeholder="Ward, Market, Landmark, City" required>
+                </div>
+
+                <div class="form-group">
+                    <label>6. Area Pincode <span class="req">*</span></label>
+                    <input type="text" id="regPincode" placeholder="6-Digit Pincode (e.g. 847226)" maxlength="6" pattern="\d{6}" required>
+                </div>
+
+                <div class="form-group">
+                    <label>7. Create User ID <span class="req">*</span></label>
+                    <input type="text" id="regUserId" placeholder="Unique User ID banayein (e.g. ksindo_847226)" required>
+                </div>
+
+                <div class="form-group">
+                    <label>8. Create Password <span class="req">*</span></label>
+                    <input type="password" id="regPassword" placeholder="Strong Password banayein" minlength="4" required>
+                </div>
+
+                <!-- 9. PHONE NUMBER WITH OTP -->
+                <div class="form-group">
+                    <label>9. Phone Number with OTP Verification <span class="req">*</span></label>
+                    <div class="otp-row">
+                        <input type="tel" id="regPhone" placeholder="10-digit Mobile Number" maxlength="10" required>
+                        <button type="button" class="btn-otp" id="btnSendOtp" onclick="sendPhoneOtp()">Send OTP</button>
+                    </div>
+                    <div id="recaptcha-container" style="margin-top:6px;"></div>
+                    <div id="otpHintBox" class="otp-hint-box"></div>
+                </div>
+
+                <div class="form-group" id="otpVerifyBox" style="display:none;">
+                    <label>Enter 6-Digit OTP <span class="req">*</span></label>
+                    <div class="otp-row">
+                        <input type="text" id="regOtpCode" placeholder="OTP dalein" maxlength="6">
+                        <button type="button" class="btn-otp" style="background:#16a34a;" id="btnVerifyOtp" onclick="verifyPhoneOtp()">Verify OTP</button>
+                    </div>
+                    <small id="otpVerifiedTag" style="display:none; color:#16a34a; font-weight:800; margin-top:4px;">✅ Mobile Number Verified</small>
+                </div>
+
+                <button type="submit" class="btn-primary" id="btnRegisterSubmit" disabled>Submit for Admin Approval</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==================== 2. MERCHANT PORTAL DASHBOARD ==================== -->
+    <div id="merchantDashboard">
+        <div class="shop-summary-bar">
+            <div>
+                <h2 id="dashShopName" style="font-size:18px; font-weight:900; color:#0f172a;">Shop Name</h2>
+                <div class="shop-badges">
+                    <span class="badge badge-pin" id="dashPincodeBadge">PIN: 000000</span>
+                    <span class="badge badge-cat" id="dashCategoryBadge">Category</span>
+                    <span class="badge badge-ksindo" id="dashKsindoTag" style="display:none;">⚡ Official KSINDO Store</span>
+                    <span class="badge badge-live">● Live</span>
+                </div>
+            </div>
+            <button class="btn-sm" style="background:#0f172a;" onclick="testOrderAlertSound()">🔊 Test Alert & Lock Notification</button>
+        </div>
+
+        <div class="alert-bar">
+            <span id="lockPushStatusText">🔔 Lock-Screen & Background Order Alert</span>
+            <button class="btn-sm" style="background:#ea580c;" onclick="registerMerchantLockScreenPush(true)">Enable Lock-Screen Push</button>
+        </div>
+
+        <div class="dash-nav">
+            <button class="dash-tab-btn active" id="navOrders" onclick="switchDashTab('orders')">📦 Live Orders (<span id="liveOrderCount">0</span>)</button>
+            <button class="dash-tab-btn" id="navHistory" onclick="switchDashTab('history')">📜 History (<span id="historyOrderCount">0</span>)</button>
+            <button class="dash-tab-btn" id="navCollection" onclick="switchDashTab('collection')">💰 Collection</button>
+            <button class="dash-tab-btn" id="navAddProd" onclick="switchDashTab('addProd')">➕ Add Product</button>
+            <button class="dash-tab-btn" id="navMyProds" onclick="switchDashTab('myProds')">🏪 Catalog & Stock</button>
+        </div>
+
+        <!-- TAB 1: LIVE ACTIVE ORDERS ONLY -->
+        <div id="sectionOrders">
+            <div id="merchantOrdersList">
+                <p style="text-align:center; padding:30px; color:#64748b;">Live orders load ho rahe hain...</p>
+            </div>
+        </div>
+
+        <!-- TAB 2: ORDER HISTORY -->
+        <div id="sectionHistory" style="display:none;">
+            <div class="filter-bar-card">
+                <div class="f-field" style="flex:2;">
+                    <label>🔍 Search by Order ID, Customer Name or Phone</label>
+                    <input type="text" id="historySearchInput" placeholder="e.g. A1B2C3 ya 9876543210..." onkeyup="renderHistoryOrders()">
+                </div>
+                <div class="f-field">
+                    <label>Status Filter</label>
+                    <select id="historyStatusFilter" onchange="renderHistoryOrders()">
+                        <option value="all">All (Delivered & Cancelled)</option>
+                        <option value="delivered">✅ Delivered Only</option>
+                        <option value="cancelled">❌ Cancelled Only</option>
+                    </select>
+                </div>
+            </div>
+            <div id="merchantHistoryList"></div>
+        </div>
+
+        <!-- TAB 3: COLLECTION REPORT (CASH + UPI + CSV) -->
+        <div id="sectionCollection" style="display:none;">
+            <div class="report-stats-grid">
+                <div class="rep-stat-card" style="border-left:4px solid #16a34a;">
+                    <small>Total Net Collection (Delivered)</small>
+                    <div class="rep-val" id="colTotalAmount" style="color:#16a34a;">₹0</div>
+                </div>
+                <div class="rep-stat-card" style="border-left:4px solid #f59e0b;">
+                    <small>💵 Cash (COD) Collection</small>
+                    <div class="rep-val" id="colCashAmount" style="color:#d97706;">₹0</div>
+                </div>
+                <div class="rep-stat-card" style="border-left:4px solid #0284c7;">
+                    <small>📱 UPI / Online Collection</small>
+                    <div class="rep-val" id="colUpiAmount" style="color:#0284c7;">₹0</div>
+                </div>
+                <div class="rep-stat-card" style="border-left:4px solid #6366f1;">
+                    <small>Delivered Orders Count</small>
+                    <div class="rep-val" id="colOrdersCount">0</div>
+                </div>
+            </div>
+
+            <div class="filter-bar-card">
+                <div class="f-field">
+                    <label>From Date</label>
+                    <input type="date" id="colFromDate" onchange="renderCollectionReport()">
+                </div>
+                <div class="f-field">
+                    <label>To Date</label>
+                    <input type="date" id="colToDate" onchange="renderCollectionReport()">
+                </div>
+                <div class="f-field">
+                    <label>Payment Mode</label>
+                    <select id="colPayFilter" onchange="renderCollectionReport()">
+                        <option value="all">All (Cash + UPI)</option>
+                        <option value="cash">💵 Cash (COD) Only</option>
+                        <option value="upi">📱 UPI / Online Only</option>
+                    </select>
+                </div>
+                <div style="display:flex; gap:6px;">
+                    <button type="button" class="btn-sm" style="background:#475569; padding:9px 12px;" onclick="resetCollectionFilters()">Reset</button>
+                    <button type="button" class="btn-sm" style="background:#16a34a; padding:9px 14px;" onclick="downloadCollectionStatementCSV()">📥 Download Statement</button>
+                </div>
+            </div>
+
+            <div class="ledger-table-wrap">
+                <table class="ledger-table">
+                    <thead>
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Date & Time</th>
+                            <th>Customer</th>
+                            <th>Payment Mode</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="collectionLedgerBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- TAB 4: ADMIN-STYLE PRODUCT & CATEGORY MANAGEMENT -->
+        <div id="sectionAddProd" style="display:none;">
+            <div class="prod-form-card">
+                <h3 id="productFormHeader" style="font-size:16px; color:#ea580c; margin-bottom:14px;">🏷️ Add / Edit Product (Admin Catalog System)</h3>
+                <form id="merchantProductForm">
+                    <input type="hidden" id="editProductId" value="">
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Product Title / Name <span class="req">*</span></label>
+                            <input type="text" id="prodName" placeholder="Product Title / Name" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Sub-Category <span class="req">*</span></label>
+                            <select id="prodSubCategory" onchange="checkSeasonalInput(this.value)">
+                                <option value="none">Sub-Category: Normal / General</option>
+                                <option value="daily vegetables">24x7 Fresh: Daily vegetables (सब्जियां)</option>
+                                <option value="fresh fruits">24x7 Fresh: Fresh fruits (फल)</option>
+                                <option value="dairy">24x7 Fresh: Milk & Dairy (दूध, पनीर)</option>
+                                <option value="eggs">24x7 Fresh: Eggs (अंडे)</option>
+                                <option value="dryfruits">24x7 Fresh: Dry Fruits (काजू, बादाम)</option>
+                                <option value="shringar">Seasonal: Chunri & Shringar (चुनरी, श्रृंगार)</option>
+                                <option value="pooja">Seasonal: Pooja & Hawan Samagri</option>
+                                <option value="seasonal special">Seasonal: Festival Special (Durga Puja, Diwali, Chhath, Eid)</option>
+                                <option value="lingerie">Fashion: Lingerie / Innerwear</option>
+                                <option value="women">Fashion: Women Dresses</option>
+                                <option value="men">Fashion: Men Wear</option>
+                                <option value="cosmetics">Beauty: Cosmetics & Makeup</option>
+                                <option value="skincare">Beauty: Skin & Hair Care</option>
+                                <option value="daily-need">Grocery: Daily Needs / Packets</option>
+                                <option value="gift-combo">Gift: Hamper / Combo Box</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group" id="festivalTagContainer" style="display:none;">
+                            <label>Festival Tag</label>
+                            <input type="text" id="prodFestivalTag" placeholder="e.g. durga-puja, diwali, chhath, eid">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Option 1: Image URL Link</label>
+                            <input type="url" id="prodImageLink" placeholder="https://...">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Option 2: Upload Photos (Max 6)</label>
+                            <input type="file" id="prodFilePhotos" accept="image/*" multiple onchange="previewSelectedFiles(this)">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Categories (Multi-Select Supported) <span class="req">*</span></label>
+                        <div class="cat-checkbox-group">
+                            <label><input type="checkbox" name="productCats" value="fashion"> 👗 Fashion</label>
+                            <label><input type="checkbox" name="productCats" value="beauty"> 💄 Beauty</label>
+                            <label><input type="checkbox" name="productCats" value="grocery"> 🛒 Grocery</label>
+                            <label><input type="checkbox" name="productCats" value="fresh"> 🥦 24x7 Fresh</label>
+                            <label><input type="checkbox" name="productCats" value="seasonal"> 🪔 Seasonal / Festive</label>
+                            <label><input type="checkbox" name="productCats" value="gift"> 🎁 Gift</label>
+                            <label><input type="checkbox" name="productCats" value="food"> 🍔 Food</label>
+                        </div>
+                    </div>
+
+                    <div class="preview-grid" id="photoPreviewContainer"></div>
+
+                    <div class="variant-box">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                            <div>
+                                <strong style="font-size:13px; color:#9a3412;">📏 Size / Weight Variants:</strong>
+                                <p style="font-size:11px; color:#7c2d12; margin-top:2px;">Size, Selling Price aur MRP dalne par discount % automatic calculate hoga.</p>
+                            </div>
+                            <button type="button" onclick="addVariantRow()" class="btn-sm" style="background:#16a34a;">+ Add Size Variant</button>
+                        </div>
+                        <div id="variantsContainer"></div>
+                    </div>
+
+                    <div class="form-grid" style="margin-top:12px;">
+                        <div class="form-group">
+                            <label>Stock Status</label>
+                            <select id="prodStockStatus">
+                                <option value="in">In Stock (Available)</option>
+                                <option value="out">Out of Stock (Block Orders)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Available Pincodes (Default: Aapka Area PIN)</label>
+                            <input type="text" id="prodPincodes" placeholder="e.g. 847226">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Product Description</label>
+                        <textarea id="prodDesc" placeholder="Product ki details likhein..." style="height:65px;"></textarea>
+                    </div>
+
+                    <div style="display:flex; gap:10px;">
+                        <button type="submit" class="btn-primary" id="productSubmitBtn">Publish Product</button>
+                        <button type="button" id="cancelEditBtn" onclick="resetProductForm()" style="display:none; background:#ef4444; color:white; border:none; padding:13px 18px; border-radius:12px; font-weight:800; cursor:pointer; margin-top:6px;">Cancel Edit</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- TAB 5: STOCK UPDATE & EDIT PRODUCTS -->
+        <div id="sectionMyProds" style="display:none;">
+            <div class="prod-grid" id="merchantProductsGrid"></div>
+        </div>
+    </div>
+
+    <!-- VIEW ORDERED PRODUCTS WITH IMAGE MODAL -->
+    <div class="modal-overlay" id="viewOrderItemsModal">
+        <div class="modal-box">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:10px; margin-bottom:12px;">
+                <div>
+                    <h3 style="font-size:16px; color:#ea580c;" id="modalOrderTitle">Order Items Details</h3>
+                    <small style="color:#64748b;" id="modalOrderCustInfo"></small>
+                </div>
+                <button onclick="closeViewOrderModal()" style="border:none; background:#f1f5f9; width:30px; height:30px; border-radius:50%; font-size:18px; font-weight:bold; cursor:pointer;">&times;</button>
+            </div>
+            <div id="modalOrderMetaBox" style="font-size:12px; background:#f8fafc; padding:10px; border-radius:10px; margin-bottom:10px; border:1px solid #e2e8f0;"></div>
+            <div id="modalOrderItemsContainer"></div>
+            <div style="background:#fff7ed; padding:10px 12px; border-radius:10px; border:1px dashed #ea580c; display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+                <span style="font-size:12px; font-weight:700;">Total Payable Bill:</span>
+                <strong style="font-size:16px; color:#ea580c;" id="modalOrderTotalText">₹0</strong>
+            </div>
+        </div>
+    </div>
+
+    <!-- PRINTABLE RECEIPT CONTAINER (NO OTP) -->
+    <div id="merchantPrintableBill" style="display:none;"></div>
+
+    <!-- FLOATING PWA APP INSTALL BANNER -->
+    <div class="pwa-download-banner" id="pwaBottomBanner">
+        <div>
+            <strong>📲 KSINDO Merchant App</strong>
+            <div style="font-size:10px; color:#cbd5e1;">Alag app install karein (Customer app ke saath chalega)</div>
+        </div>
+        <button class="btn-sm" style="background:#ea580c;" onclick="installMerchantPWA()">Install App</button>
+    </div>
+
+    <script>
+        // Initialize Firebase using external firebase-config.js
+        if (!window.KSINDO_FIREBASE_CONFIG) {
+            alert("Error: firebase-config.js load nahi hui!");
+        } else if (!firebase.apps.length) {
+            firebase.initializeApp(window.KSINDO_FIREBASE_CONFIG);
+        }
+
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        let confirmationResultGlobal = null;
+        let fallbackOtpCode = null;
+        let isPhoneOtpVerified = false;
+        let activeMerchant = JSON.parse(localStorage.getItem('ksindo_merchant_session') || 'null');
+        let knownOrderIds = new Set();
+        let isInitialOrderLoad = true;
+        let merchantProductsCache = [];
+        let allShopsMap = {};
+        let deliveryBoysList = [];
+        let allShopOrdersCache = {};
+        let liveOrdersArray = [];
+        let historyOrdersArray = [];
+        let filteredCollectionOrders = [];
+        let base64PhotosArray = [];
+        let deferredPrompt = null;
+        let merchantSwRegistration = null;
+
+        // ==================== DEDICATED SERVICE WORKER & STANDALONE PWA INSTALL ====================
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('merchant-sw.js')
+                .then(reg => {
+                    merchantSwRegistration = reg;
+                })
+                .catch(err => console.log("Merchant SW error:", err));
+        }
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('installPwaBtn').style.display = 'inline-block';
+        });
+
+        window.addEventListener('appinstalled', () => {
+            const banner = document.getElementById('pwaBottomBanner');
+            if (banner) banner.style.display = 'none';
+            alert("✅ KSINDO Merchant App phone me install ho gaya hai!");
+        });
+
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            const banner = document.getElementById('pwaBottomBanner');
+            if (banner) banner.style.display = 'none';
+        }
+
+        function installMerchantPWA() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then(() => { deferredPrompt = null; });
+            } else {
+                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+                if (isIOS) {
+                    alert("📲 iPhone me KSINDO Merchant App install karne ke liye:\n1. Niche 'Share' icon (⬆️) par tap karein.\n2. 'Add to Home Screen' par click karein.");
+                } else {
+                    alert("📲 Phone me KSINDO Merchant App install karne ke liye:\n1. Browser ke upar right side 3-dots (⋮) par click karein.\n2. 'Install App' ya 'Add to Home Screen' par tap karein.\n(Note: Agar purana shortcut hai to pehle use remove karke page refresh karein.)");
+                }
+            }
+        }
+
+        // ==================== LOCK-SCREEN & BACKGROUND FCM PUSH + SOUND ====================
+        async function registerMerchantLockScreenPush(showManualAlert = false) {
+            try {
+                if (!("Notification" in window)) {
+                    if (showManualAlert) alert("Is browser me system notification supported nahi hai.");
+                    return;
+                }
+
+                const perm = await Notification.requestPermission();
+                if (perm !== "granted") {
+                    if (showManualAlert) alert("Please browser settings se Notification permission Allow karein.");
+                    return;
+                }
+
+                const reg = merchantSwRegistration || await navigator.serviceWorker.register('merchant-sw.js');
+                document.getElementById('lockPushStatusText').innerText = "🔔 Lock-Screen & Background Push: ACTIVE";
+
+                // Foreground FCM listener
+                if (firebase.messaging && firebase.messaging.isSupported()) {
+                    const messaging = firebase.messaging();
+                    messaging.onMessage((payload) => {
+                        const title = (payload.notification && payload.notification.title) || "🛎️ Naya Order Aaya Hai!";
+                        const body = (payload.notification && payload.notification.body) || "Order details check karein.";
+                        triggerLockScreenNotification(title, body);
+                    });
+
+                    // Register FCM Token for Lock-Screen / Closed-App Push
+                    // Firebase Console > Cloud Messaging > Web Push Certificates se apni VAPID Key yahan dalein
+                    const vapidKey = "YOUR_FIREBASE_WEB_PUSH_VAPID_KEY";
+                    if (vapidKey && vapidKey !== "YOUR_FIREBASE_WEB_PUSH_VAPID_KEY") {
+                        const fcmToken = await messaging.getToken({
+                            vapidKey: vapidKey,
+                            serviceWorkerRegistration: reg
+                        });
+                        if (fcmToken && activeMerchant && activeMerchant.id) {
+                            await db.collection("shops").doc(activeMerchant.id).update({
+                                merchantFcmToken: fcmToken,
+                                pushUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                            });
+                        }
+                    }
+                }
+
+                if (showManualAlert) {
+                    testOrderAlertSound();
+                    alert("✅ Lock-Screen aur Sound Alert Enable ho gaya!\n\nTip: Phone ki Settings > Apps > KSINDO Merchant > Battery me 'Unrestricted' chunein taaki phone lock hone par bhi alert turant baje.");
+                }
+            } catch (err) {
+                if (showManualAlert) testOrderAlertSound();
+            }
+        }
+
+        function playAlertTone() {
+            try {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                const ctx = new AudioCtx();
+                const notes = [880, 1100, 880, 1320, 1100, 1320];
+                notes.forEach((freq, idx) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.16);
+                    gain.gain.setValueAtTime(0.4, ctx.currentTime + idx * 0.16);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + (idx + 1) * 0.16);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(ctx.currentTime + idx * 0.16);
+                    osc.stop(ctx.currentTime + (idx + 1) * 0.16);
+                });
+                if (navigator.vibrate) navigator.vibrate([400, 150, 400, 150, 600]);
+            } catch (e) {}
+        }
+
+        function triggerLockScreenNotification(title, bodyText) {
+            playAlertTone();
+            if ("Notification" in window && Notification.permission === "granted") {
+                if (merchantSwRegistration) {
+                    merchantSwRegistration.showNotification(title, {
+                        body: bodyText,
+                        icon: 'https://poddar977.github.io/jaynagarbazar/logo.png',
+                        badge: 'https://poddar977.github.io/jaynagarbazar/logo.png',
+                        vibrate: [500, 200, 500, 200, 800],
+                        requireInteraction: true,
+                        renotify: true,
+                        tag: 'ksindo-merchant-urgent-order'
+                    });
+                } else {
+                    new Notification(title, {
+                        body: bodyText,
+                        icon: 'https://poddar977.github.io/jaynagarbazar/logo.png'
+                    });
+                }
+            }
+        }
+
+        function testOrderAlertSound() {
+            triggerLockScreenNotification(
+                "🔔 KSINDO Urgent Order Alert",
+                "Naya order aane par aapke phone ke lock screen par aisa alert aur sound bajega!"
+            );
+        }
+
+        // ==================== AUTH TABS & VENDOR SUB-OPTIONS ====================
+        function switchAuthTab(tab) {
+            document.getElementById('authStatusBanner').className = 'status-banner';
+            if (tab === 'login') {
+                document.getElementById('tabLogin').classList.add('active');
+                document.getElementById('tabRegister').classList.remove('active');
+                document.getElementById('merchantLoginForm').style.display = 'block';
+                document.getElementById('merchantRegisterForm').style.display = 'none';
+            } else {
+                document.getElementById('tabRegister').classList.add('active');
+                document.getElementById('tabLogin').classList.remove('active');
+                document.getElementById('merchantRegisterForm').style.display = 'block';
+                document.getElementById('merchantLoginForm').style.display = 'none';
+            }
+        }
+
+        function handleVendorOptionChange() {
+            const val = document.getElementById('regVendorType').value;
+            const wrap = document.getElementById('shopDetailsWrap');
+            const subCat = document.getElementById('regShopCategory');
+            const sName = document.getElementById('regShopName');
+
+            if (val === 'SHOP') {
+                wrap.style.display = 'block';
+                subCat.required = true;
+                sName.required = true;
+            } else {
+                wrap.style.display = 'none';
+                subCat.required = false;
+                sName.required = false;
+            }
+        }
+
+        function showBanner(type, msg) {
+            const b = document.getElementById('authStatusBanner');
+            b.className = 'status-banner ' + type;
+            b.innerText = msg;
+        }
+
+        // ==================== PHONE OTP VERIFICATION ====================
+        function sendPhoneOtp() {
+            const phone = document.getElementById('regPhone').value.trim();
+            if (!/^\d{10}$/.test(phone)) {
+                alert("Kripya sahi 10-digit mobile number dalein.");
+                return;
+            }
+            const btn = document.getElementById('btnSendOtp');
+            const hintBox = document.getElementById('otpHintBox');
+            btn.disabled = true;
+            btn.innerText = "Sending...";
+            hintBox.style.display = 'none';
+
+            try {
+                if (!window.recaptchaVerifier) {
+                    window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
+                        size: 'invisible'
+                    });
+                }
+
+                auth.signInWithPhoneNumber("+91" + phone, window.recaptchaVerifier)
+                    .then(confirmationResult => {
+                        confirmationResultGlobal = confirmationResult;
+                        fallbackOtpCode = null;
+                        document.getElementById('otpVerifyBox').style.display = 'block';
+                        btn.innerText = "OTP Sent";
+                        alert("OTP aapke mobile number +91" + phone + " par bhej diya gaya hai.");
+                    })
+                    .catch(() => activateFallbackOtp(phone, btn, hintBox));
+            } catch (e) {
+                activateFallbackOtp(phone, btn, hintBox);
+            }
+        }
+
+        function activateFallbackOtp(phone, btn, hintBox) {
+            fallbackOtpCode = String(Math.floor(100000 + Math.random() * 900000));
+            confirmationResultGlobal = null;
+            document.getElementById('otpVerifyBox').style.display = 'block';
+            btn.innerText = "Code Ready";
+            hintBox.style.display = 'block';
+            hintBox.innerHTML = `🔐 Verification Code (+91${phone}): <strong style="font-size:14px; letter-spacing:1px;">${fallbackOtpCode}</strong> (Neeche box me dalein)`;
+        }
+
+        function verifyPhoneOtp() {
+            const code = document.getElementById('regOtpCode').value.trim();
+            if (code.length !== 6) {
+                alert("Kripya 6-digit OTP dalein.");
+                return;
+            }
+            const btn = document.getElementById('btnVerifyOtp');
+            btn.disabled = true;
+            btn.innerText = "Verifying...";
+
+            if (fallbackOtpCode) {
+                if (code === fallbackOtpCode) completeOtpSuccess(btn);
+                else {
+                    btn.disabled = false;
+                    btn.innerText = "Verify OTP";
+                    alert("Galat Verification Code!");
+                }
+                return;
+            }
+
+            if (confirmationResultGlobal) {
+                confirmationResultGlobal.confirm(code)
+                    .then(() => completeOtpSuccess(btn))
+                    .catch(() => {
+                        btn.disabled = false;
+                        btn.innerText = "Verify OTP";
+                        alert("Galat OTP! Kripya dobara check karein.");
+                    });
+            }
+        }
+
+        function completeOtpSuccess(btn) {
+            isPhoneOtpVerified = true;
+            document.getElementById('otpVerifiedTag').style.display = 'block';
+            document.getElementById('otpHintBox').style.display = 'none';
+            document.getElementById('regPhone').readOnly = true;
+            document.getElementById('regOtpCode').readOnly = true;
+            document.getElementById('btnRegisterSubmit').disabled = false;
+            btn.innerText = "Verified";
+        }
+
+        // ==================== REGISTRATION -> ADMIN APPROVAL QUEUE ====================
+        document.getElementById('merchantRegisterForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const name = document.getElementById('regName').value.trim();
+            const email = document.getElementById('regEmail').value.trim();
+            const vendorType = document.getElementById('regVendorType').value;
+            const shopCategory = vendorType === 'SHOP' ? document.getElementById('regShopCategory').value : 'KSINDO Store';
+            const shopName = vendorType === 'SHOP' ? document.getElementById('regShopName').value.trim() : 'KSINDO Store';
+            const gstin = document.getElementById('regGstin').value.trim().toUpperCase();
+            const address = document.getElementById('regAddress').value.trim();
+            const pincode = document.getElementById('regPincode').value.trim();
+            const userId = document.getElementById('regUserId').value.trim().toLowerCase();
+            const password = document.getElementById('regPassword').value.trim();
+            const phone = document.getElementById('regPhone').value.trim();
+
+            if (!name || !email || !vendorType || !shopCategory || !shopName || !address || !/^\d{6}$/.test(pincode) || !userId || !password) {
+                alert("1 se 8 tak sabhi details bharna compulsory hai (sirf GSTIN optional hai)!");
+                return;
+            }
+            if (!isPhoneOtpVerified) {
+                alert("Pehle Mobile Number ka OTP verify karein!");
+                return;
+            }
+
+            const submitBtn = document.getElementById('btnRegisterSubmit');
+            submitBtn.disabled = true;
+            submitBtn.innerText = "Submitting to Admin...";
+
+            try {
+                const existingReq = await db.collection("merchant_requests").where("userId", "==", userId).get();
+                const existingShop = await db.collection("shops").where("userId", "==", userId).get();
+                if (!existingReq.empty || !existingShop.empty) {
+                    alert("Ye User ID pehle se li ja chuki hai. Koi doosra User ID banayein.");
+                    submitBtn.disabled = false;
+                    submitBtn.innerText = "Submit for Admin Approval";
+                    return;
+                }
+
+                await db.collection("merchant_requests").add({
+                    ownerName: name,
+                    email: email,
+                    vendorType: vendorType,
+                    shopCategory: shopCategory,
+                    shopName: shopName,
+                    gstin: gstin || "",
+                    address: address,
+                    pincode: pincode,
+                    userId: userId,
+                    password: password,
+                    phone: phone,
+                    phoneVerified: true,
+                    approvalStatus: "pending",
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                document.getElementById('merchantRegisterForm').reset();
+                isPhoneOtpVerified = false;
+                fallbackOtpCode = null;
+                document.getElementById('regPhone').readOnly = false;
+                document.getElementById('regOtpCode').readOnly = false;
+                document.getElementById('otpVerifyBox').style.display = 'none';
+                document.getElementById('otpVerifiedTag').style.display = 'none';
+                document.getElementById('btnSendOtp').disabled = false;
+                document.getElementById('btnSendOtp').innerText = "Send OTP";
+
+                switchAuthTab('login');
+                showBanner('pending', '✅ Aapka application Admin Approval ke liye bhej diya gaya hai! Admin approve karne ke baad aap apne User ID aur Password se login kar sakenge.');
+            } catch (err) {
+                alert("Registration Error: " + err.message);
+            } finally {
+                submitBtn.innerText = "Submit for Admin Approval";
+            }
+        });
+
+        // ==================== MERCHANT LOGIN ====================
+        document.getElementById('merchantLoginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const userId = document.getElementById('loginUserId').value.trim().toLowerCase();
+            const password = document.getElementById('loginPassword').value.trim();
+
+            const btn = document.getElementById('btnLoginSubmit');
+            btn.disabled = true;
+            btn.innerText = "Checking Approval...";
+
+            try {
+                const shopSnap = await db.collection("shops")
+                    .where("userId", "==", userId)
+                    .where("password", "==", password)
+                    .get();
+
+                if (!shopSnap.empty) {
+                    const doc = shopSnap.docs[0];
+                    activeMerchant = { id: doc.id, ...doc.data() };
+                    localStorage.setItem('ksindo_merchant_session', JSON.stringify(activeMerchant));
+                    openMerchantDashboard();
+                    return;
+                }
+
+                const reqSnap = await db.collection("merchant_requests")
+                    .where("userId", "==", userId)
+                    .where("password", "==", password)
+                    .get();
+
+                if (!reqSnap.empty) {
+                    const reqData = reqSnap.docs[0].data();
+                    if (reqData.approvalStatus === "approved") {
+                        const newShopRef = await db.collection("shops").add({
+                            ownerName: reqData.ownerName,
+                            email: reqData.email,
+                            vendorType: reqData.vendorType,
+                            shopCategory: reqData.shopCategory,
+                            shopType: (reqData.shopCategory || '').toLowerCase().includes('restaurant') ? 'restaurant' : 'mart',
+                            shopName: reqData.shopName,
+                            gstin: reqData.gstin || "",
+                            address: reqData.address,
+                            pincode: reqData.pincode,
+                            userId: reqData.userId,
+                            username: reqData.userId,
+                            password: reqData.password,
+                            phone: reqData.phone,
+                            isOpen: true,
+                            approvedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                        activeMerchant = { id: newShopRef.id, ...reqData };
+                        localStorage.setItem('ksindo_merchant_session', JSON.stringify(activeMerchant));
+                        openMerchantDashboard();
+                    } else if (reqData.approvalStatus === "rejected") {
+                        showBanner('error', '❌ Aapka Merchant application Admin dwara reject kar diya gaya hai.');
+                    } else {
+                        showBanner('pending', '⏳ Aapka account abhi Admin Approval ke liye pending hai. Approval milte hi aapka ID active ho jayega.');
+                    }
+                } else {
+                    showBanner('error', '❌ Galat User ID ya Password!');
+                }
+            } catch (err) {
+                alert("Login Error: " + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Login to Merchant Portal";
+            }
+        });
+
+        function merchantLogout() {
+            localStorage.removeItem('ksindo_merchant_session');
+            activeMerchant = null;
+            window.location.reload();
+        }
+
+        function isKsindoOfficialStore(merchant) {
+            if (!merchant) return false;
+            return merchant.vendorType === 'KSINDO_STORE' ||
+                   (merchant.shopCategory || '').toLowerCase() === 'ksindo store' ||
+                   (merchant.shopName || '').toLowerCase().includes('ksindo store');
+        }
+
+        // ==================== DASHBOARD INITIALIZATION ====================
+        function openMerchantDashboard() {
+            document.getElementById('authSection').style.display = 'none';
+            document.getElementById('merchantDashboard').style.display = 'block';
+            document.getElementById('logoutBtn').style.display = 'inline-block';
+
+            const isKsindo = isKsindoOfficialStore(activeMerchant);
+            document.getElementById('dashShopName').innerText = activeMerchant.shopName;
+            document.getElementById('dashPincodeBadge').innerText = "PIN: " + activeMerchant.pincode;
+            document.getElementById('dashCategoryBadge').innerText = activeMerchant.shopCategory || activeMerchant.vendorType;
+            document.getElementById('dashKsindoTag').style.display = isKsindo ? 'inline-block' : 'none';
+            document.getElementById('prodPincodes').value = activeMerchant.pincode || '';
+
+            if (document.getElementById('variantsContainer').children.length === 0) {
+                addVariantRow();
+            }
+
+            registerMerchantLockScreenPush(false);
+
+            db.collection("portal_users").where("role", "==", "delivery").onSnapshot(snap => {
+                deliveryBoysList = [];
+                snap.forEach(d => deliveryBoysList.push({ id: d.id, ...d.data() }));
+            });
+
+            db.collection("shops").onSnapshot(snap => {
+                allShopsMap = {};
+                snap.forEach(d => {
+                    allShopsMap[d.id] = { id: d.id, ...d.data() };
+                });
+                listenToIsolatedOrders();
+            });
+
+            listenToMerchantProducts();
+        }
+
+        function switchDashTab(tab) {
+            document.getElementById('sectionOrders').style.display = tab === 'orders' ? 'block' : 'none';
+            document.getElementById('sectionHistory').style.display = tab === 'history' ? 'block' : 'none';
+            document.getElementById('sectionCollection').style.display = tab === 'collection' ? 'block' : 'none';
+            document.getElementById('sectionAddProd').style.display = tab === 'addProd' ? 'block' : 'none';
+            document.getElementById('sectionMyProds').style.display = tab === 'myProds' ? 'block' : 'none';
+
+            document.getElementById('navOrders').classList.toggle('active', tab === 'orders');
+            document.getElementById('navHistory').classList.toggle('active', tab === 'history');
+            document.getElementById('navCollection').classList.toggle('active', tab === 'collection');
+            document.getElementById('navAddProd').classList.toggle('active', tab === 'addProd');
+            document.getElementById('navMyProds').classList.toggle('active', tab === 'myProds');
+
+            if (tab === 'history') renderHistoryOrders();
+            if (tab === 'collection') renderCollectionReport();
+        }
+
+        // ==================== STRICT ORDER ISOLATION + AUTO SPLIT (LIVE vs HISTORY) ====================
+        function listenToIsolatedOrders() {
+            const myPin = String(activeMerchant.pincode || '').trim();
+            const amIKsindoStore = isKsindoOfficialStore(activeMerchant);
+
+            db.collection("orders")
+                .where("customerPincode", "==", myPin)
+                .onSnapshot(snap => {
+                    allShopOrdersCache = {};
+                    liveOrdersArray = [];
+                    historyOrdersArray = [];
+
+                    snap.forEach(doc => {
+                        const o = { id: doc.id, ...doc.data() };
+                        const items = Array.isArray(o.items) ? o.items : [];
+                        let matchedOrder = null;
+
+                        if (amIKsindoStore) {
+                            const isOtherShopOrder = (() => {
+                                if (o.assignedShopId && o.assignedShopId !== activeMerchant.id) {
+                                    const targetShop = allShopsMap[o.assignedShopId];
+                                    if (!targetShop || !isKsindoOfficialStore(targetShop)) return true;
+                                }
+                                if (o.assignedShopName && !o.assignedShopName.toLowerCase().includes('ksindo') && o.assignedShopName.toLowerCase() !== 'kitchen') {
+                                    return true;
+                                }
+                                return false;
+                            })();
+
+                            const ksindoItems = items.filter(item => {
+                                if (!item.assignedShopId && !item.shopId) return true;
+                                const itemShopId = item.assignedShopId || item.shopId;
+                                if (itemShopId === activeMerchant.id) return true;
+                                const sObj = allShopsMap[itemShopId];
+                                return sObj ? isKsindoOfficialStore(sObj) : false;
+                            });
+
+                            if (!isOtherShopOrder && (ksindoItems.length > 0 || items.length === 0)) {
+                                matchedOrder = { ...o, filteredItems: ksindoItems.length > 0 ? ksindoItems : items };
+                            }
+                        } else {
+                            const directMatch = (o.assignedShopId === activeMerchant.id) ||
+                                                (o.assignedShopName && o.assignedShopName.toLowerCase() === activeMerchant.shopName.toLowerCase());
+                            const myItems = items.filter(item =>
+                                item.assignedShopId === activeMerchant.id ||
+                                item.shopId === activeMerchant.id ||
+                                (item.assignedShopName && item.assignedShopName.toLowerCase() === activeMerchant.shopName.toLowerCase())
+                            );
+
+                            if (directMatch || myItems.length > 0) {
+                                matchedOrder = { ...o, filteredItems: myItems.length > 0 ? myItems : items };
+                            }
+                        }
+
+                        if (matchedOrder) {
+                            allShopOrdersCache[o.id] = matchedOrder;
+                            const st = (matchedOrder.status || 'Placed').toLowerCase();
+
+                            if (st === 'delivered' || st === 'cancelled') {
+                                historyOrdersArray.push(matchedOrder);
+                            } else {
+                                liveOrdersArray.push(matchedOrder);
+                                checkAndTriggerAlert(doc.id, matchedOrder);
+                            }
+                        }
+                    });
+
+                    isInitialOrderLoad = false;
+
+                    liveOrdersArray.sort((a, b) => (b.orderDate?.seconds || 0) - (a.orderDate?.seconds || 0));
+                    historyOrdersArray.sort((a, b) => (b.orderDate?.seconds || 0) - (a.orderDate?.seconds || 0));
+
+                    document.getElementById('liveOrderCount').innerText = liveOrdersArray.length;
+                    document.getElementById('historyOrderCount').innerText = historyOrdersArray.length;
+
+                    renderLiveOrders(liveOrdersArray);
+                    renderHistoryOrders();
+                    renderCollectionReport();
+                });
+        }
+
+        function checkAndTriggerAlert(orderId, orderObj) {
+            if (!isInitialOrderLoad && !knownOrderIds.has(orderId) && (orderObj.status || 'Placed') === "Placed") {
+                triggerLockScreenNotification(
+                    "🛎️ Naya Order: " + activeMerchant.shopName,
+                    "Customer: " + (orderObj.customerName || "Buyer") + " • PIN: " + orderObj.customerPincode + " • ₹" + orderObj.totalAmount
+                );
+            }
+            knownOrderIds.add(orderId);
+        }
+
+        // ==================== RENDER LIVE ORDERS (NO OTP) ====================
+        function renderLiveOrders(orders) {
+            const container = document.getElementById('merchantOrdersList');
+
+            if (orders.length === 0) {
+                container.innerHTML = '<div style="background:white; padding:30px; border-radius:16px; text-align:center; color:#64748b;">' +
+                    activeMerchant.shopName + ' (PIN: ' + activeMerchant.pincode + ') ke liye abhi koi active live order nahi hai.' +
+                '</div>';
+                return;
+            }
+
+            const boyDropdownOptions = deliveryBoysList.map(b =>
+                `<option value="${b.phone}">${b.fullName} (${b.phone})</option>`
+            ).join('');
+
+            container.innerHTML = orders.map(o => {
+                const shortId = o.id.slice(-6).toUpperCase();
+                const itemsPreviewHtml = o.filteredItems.map(i => {
+                    const img = i.imageUrl || (i.images && i.images[0]) || 'https://via.placeholder.com/60';
+                    const variantText = i.size || i.variant || '';
+                    return `
+                        <div class="mini-item-chip" onclick="openViewOrderModal('${o.id}')" style="cursor:pointer;">
+                            <img src="${img}" alt="${i.name}">
+                            <div>
+                                <div style="font-size:11px; font-weight:800; color:#0f172a;">${i.name}</div>
+                                <div style="font-size:10px; color:#64748b;">${variantText ? variantText + ' • ' : ''}Qty: ${i.qty || 1} • ₹${Number(i.price) * Number(i.qty || 1)}</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                return `
+                    <div class="order-card">
+                        <div class="order-top">
+                            <div>
+                                <strong style="font-size:14px;">Order #${shortId}</strong>
+                                <div style="font-size:11px; color:#64748b;">${o.orderDateFormatted || ''}</div>
+                            </div>
+                            <span class="order-status">${o.status || 'Placed'}</span>
+                        </div>
+
+                        <div style="font-size:12px; line-height:1.55; color:#1e293b;">
+                            <b>Customer:</b> ${o.customerName} (<a href="tel:${o.customerPhone}" style="color:#0284c7; text-decoration:none; font-weight:700;">📞 ${o.customerPhone}</a>)<br>
+                            <b>Address:</b> ${o.customerAddress} — <b>PIN: ${o.customerPincode}</b>
+                            ${o.assignedBoyPhone ? `<br><b>🚴 Assigned Boy:</b> <span style="color:#15803d; font-weight:800;">${o.assignedBoyPhone}</span>` : ''}
+                        </div>
+
+                        <div class="order-items-preview">${itemsPreviewHtml}</div>
+
+                        <div class="assign-boy-box">
+                            <span style="font-size:11px; font-weight:800; color:#1e40af;">🚴 Assign Boy:</span>
+                            ${deliveryBoysList.length > 0 ? `
+                                <select onchange="document.getElementById('boyInp_${o.id}').value = this.value" style="max-width:155px;">
+                                    <option value="">-- Select Boy --</option>
+                                    ${boyDropdownOptions}
+                                </select>
+                            ` : ''}
+                            <input type="tel" id="boyInp_${o.id}" placeholder="10-digit Boy Phone" maxlength="10" value="${o.assignedBoyPhone || ''}" style="width:135px;">
+                            <button type="button" class="btn-sm" style="background:#1d4ed8;" onclick="assignDeliveryBoyToOrder('${o.id}')">Assign</button>
+                        </div>
+
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-top:8px;">
+                            <strong style="color:#ea580c; font-size:14px;">Total: ₹${o.totalAmount} (${o.paymentMethod || 'COD'})</strong>
+                            <div class="order-actions">
+                                <button type="button" class="btn-sm" style="background:#0f172a;" onclick="openViewOrderModal('${o.id}')">👁️ View Items</button>
+                                <button type="button" class="btn-sm" style="background:#0284c7;" onclick="printMerchantBill('${o.id}')">🖨️ Print Bill</button>
+                                <button type="button" class="btn-sm" style="background:#f59e0b; color:#0f172a;" onclick="updateOrderStatus('${o.id}', 'Packed')">📦 Pack</button>
+                                <button type="button" class="btn-sm" style="background:#16a34a;" onclick="updateOrderStatus('${o.id}', 'Delivered')">✅ Delivered</button>
+                                <button type="button" class="btn-sm" style="background:#dc2626;" onclick="cancelMerchantOrder('${o.id}')">❌ Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ==================== RENDER ORDER HISTORY + SEARCH BY ORDER ID ====================
+        function renderHistoryOrders() {
+            const container = document.getElementById('merchantHistoryList');
+            if (!container) return;
+
+            const q = (document.getElementById('historySearchInput')?.value || '').trim().toLowerCase();
+            const stFilter = document.getElementById('historyStatusFilter')?.value || 'all';
+
+            const filtered = historyOrdersArray.filter(o => {
+                const st = (o.status || '').toLowerCase();
+                if (stFilter !== 'all' && st !== stFilter) return false;
+
+                if (!q) return true;
+                const fullId = o.id.toLowerCase();
+                const shortId = o.id.slice(-6).toLowerCase();
+                const custName = (o.customerName || '').toLowerCase();
+                const custPhone = (o.customerPhone || '').toLowerCase();
+                return fullId.includes(q) || shortId.includes(q) || custName.includes(q) || custPhone.includes(q);
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = '<div style="background:white; padding:28px; border-radius:16px; text-align:center; color:#64748b;">Koi matching history order nahi mila.</div>';
+                return;
+            }
+
+            container.innerHTML = filtered.map(o => {
+                const shortId = o.id.slice(-6).toUpperCase();
+                const isDelivered = (o.status || '').toLowerCase() === 'delivered';
+                return `
+                    <div class="order-card" style="border-left-color:${isDelivered ? '#16a34a' : '#ef4444'};">
+                        <div class="order-top">
+                            <div>
+                                <strong style="font-size:14px;">Order #${shortId}</strong>
+                                <span style="font-size:10px; color:#64748b; margin-left:6px;">(ID: ${o.id})</span>
+                                <div style="font-size:11px; color:#64748b;">${o.orderDateFormatted || ''}</div>
+                            </div>
+                            <span class="order-status" style="background:${isDelivered ? '#dcfce7' : '#fee2e2'}; color:${isDelivered ? '#15803d' : '#b91c1c'};">
+                                ${o.status}
+                            </span>
+                        </div>
+                        <div style="font-size:12px; line-height:1.5; color:#1e293b;">
+                            <b>Customer:</b> ${o.customerName} (${o.customerPhone})<br>
+                            <b>Address:</b> ${o.customerAddress} — <b>PIN: ${o.customerPincode}</b>
+                            ${o.assignedBoyPhone ? `<br><b>🚴 Delivery Boy:</b> ${o.assignedBoyPhone}` : ''}
+                            ${!isDelivered && o.cancelReason ? `<br><b style="color:#dc2626;">Cancel Reason:</b> ${o.cancelReason}` : ''}
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-top:10px; padding-top:8px; border-top:1px solid #f1f5f9;">
+                            <strong style="color:${isDelivered ? '#16a34a' : '#64748b'}; font-size:14px;">₹${o.totalAmount} (${o.paymentMethod || 'COD'})</strong>
+                            <div class="order-actions" style="margin-top:0;">
+                                <button type="button" class="btn-sm" style="background:#0f172a;" onclick="openViewOrderModal('${o.id}')">👁️ Full Detail & Items</button>
+                                <button type="button" class="btn-sm" style="background:#0284c7;" onclick="printMerchantBill('${o.id}')">🖨️ Receipt</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ==================== COLLECTION REPORT (CASH + UPI + CSV) ====================
+        function getOrderDateObject(o) {
+            if (o.orderDate && typeof o.orderDate.toDate === 'function') return o.orderDate.toDate();
+            if (o.deliveredAt) return new Date(o.deliveredAt);
+            if (o.createdAt && typeof o.createdAt.toDate === 'function') return o.createdAt.toDate();
+            return new Date();
+        }
+
+        function isUpiOrOnlinePayment(methodStr) {
+            const m = String(methodStr || 'COD').toLowerCase();
+            return m.includes('upi') || m.includes('online') || m.includes('prepaid') || m.includes('qr') || m.includes('gpay') || m.includes('phonepe') || m.includes('paytm');
+        }
+
+        function renderCollectionReport() {
+            const tbody = document.getElementById('collectionLedgerBody');
+            if (!tbody) return;
+
+            const fromVal = document.getElementById('colFromDate')?.value || '';
+            const toVal = document.getElementById('colToDate')?.value || '';
+            const payFilter = document.getElementById('colPayFilter')?.value || 'all';
+
+            const fromDate = fromVal ? new Date(fromVal + 'T00:00:00') : null;
+            const toDate = toVal ? new Date(toVal + 'T23:59:59') : null;
+
+            const deliveredOrders = historyOrdersArray.filter(o => (o.status || '').toLowerCase() === 'delivered');
+
+            let totalNet = 0;
+            let totalCash = 0;
+            let totalUpi = 0;
+            filteredCollectionOrders = [];
+
+            deliveredOrders.forEach(o => {
+                const dt = getOrderDateObject(o);
+                if (fromDate && dt < fromDate) return;
+                if (toDate && dt > toDate) return;
+
+                const isUpi = isUpiOrOnlinePayment(o.paymentMethod);
+                if (payFilter === 'cash' && isUpi) return;
+                if (payFilter === 'upi' && !isUpi) return;
+
+                const amt = Number(o.totalAmount || 0);
+                totalNet += amt;
+                if (isUpi) totalUpi += amt;
+                else totalCash += amt;
+
+                filteredCollectionOrders.push({ ...o, parsedDate: dt, normalizedMode: isUpi ? 'UPI / Online' : 'Cash (COD)' });
+            });
+
+            document.getElementById('colTotalAmount').innerText = '₹' + totalNet;
+            document.getElementById('colCashAmount').innerText = '₹' + totalCash;
+            document.getElementById('colUpiAmount').innerText = '₹' + totalUpi;
+            document.getElementById('colOrdersCount').innerText = filteredCollectionOrders.length;
+
+            if (filteredCollectionOrders.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px; color:#64748b;">Selected filter me koi delivered collection record nahi hai.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = filteredCollectionOrders.map(o => `
+                <tr>
+                    <td><strong>#${o.id.slice(-6).toUpperCase()}</strong></td>
+                    <td><small>${o.orderDateFormatted || o.parsedDate.toLocaleString('en-IN')}</small></td>
+                    <td>${o.customerName}<br><small style="color:#64748b;">${o.customerPhone}</small></td>
+                    <td>
+                        <span style="padding:2px 8px; border-radius:8px; font-size:10px; font-weight:800; background:${o.normalizedMode.includes('UPI') ? '#e0f2fe' : '#fef3c7'}; color:${o.normalizedMode.includes('UPI') ? '#0369a1' : '#b45309'};">
+                            ${o.normalizedMode}
+                        </span>
+                    </td>
+                    <td><strong style="color:#16a34a;">₹${o.totalAmount}</strong></td>
+                    <td><span style="color:#15803d; font-weight:800; font-size:11px;">Delivered</span></td>
+                </tr>
+            `).join('');
+        }
+
+        function resetCollectionFilters() {
+            document.getElementById('colFromDate').value = '';
+            document.getElementById('colToDate').value = '';
+            document.getElementById('colPayFilter').value = 'all';
+            renderCollectionReport();
+        }
+
+        function downloadCollectionStatementCSV() {
+            if (filteredCollectionOrders.length === 0) {
+                alert("Download karne ke liye koi collection record nahi hai!");
+                return;
+            }
+
+            let totalCash = 0, totalUpi = 0, grandTotal = 0;
+            const rows = [
+                ['KSINDO MERCHANT COLLECTION STATEMENT'],
+                ['Shop Name', activeMerchant.shopName, 'Pincode', activeMerchant.pincode],
+                ['Generated On', new Date().toLocaleString('en-IN')],
+                [],
+                ['Order ID', 'Full Reference ID', 'Date & Time', 'Customer Name', 'Customer Phone', 'Payment Mode', 'Amount (INR)', 'Items Summary']
+            ];
+
+            filteredCollectionOrders.forEach(o => {
+                const amt = Number(o.totalAmount || 0);
+                grandTotal += amt;
+                if (o.normalizedMode.includes('UPI')) totalUpi += amt;
+                else totalCash += amt;
+
+                const itemsSummary = (o.filteredItems || []).map(i => `${i.name} x${i.qty || 1}`).join('; ');
+                rows.push([
+                    '#' + o.id.slice(-6).toUpperCase(),
+                    o.id,
+                    o.orderDateFormatted || o.parsedDate.toLocaleString('en-IN'),
+                    o.customerName || '',
+                    o.customerPhone || '',
+                    o.normalizedMode,
+                    amt,
+                    itemsSummary
+                ]);
+            });
+
+            rows.push([]);
+            rows.push(['SUMMARY', '', '', '', '', 'Total Cash (COD)', totalCash, '']);
+            rows.push(['SUMMARY', '', '', '', '', 'Total UPI / Online', totalUpi, '']);
+            rows.push(['SUMMARY', '', '', '', '', 'GRAND TOTAL COLLECTION', grandTotal, '']);
+
+            const csvContent = rows.map(r => r.map(v => '"' + String(v ?? '').replace(/"/g, '""') + '"').join(',')).join('\r\n');
+            const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${activeMerchant.shopName.replace(/\s+/g, '_')}_Collection_Statement_${new Date().toISOString().slice(0, 10)}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // ==================== VIEW ORDERED ITEMS WITH PHOTO MODAL ====================
+        function openViewOrderModal(orderId) {
+            const o = allShopOrdersCache[orderId];
+            if (!o) return;
+
+            document.getElementById('modalOrderTitle').innerText = "Order #" + o.id.slice(-6).toUpperCase() + " — Full Details";
+            document.getElementById('modalOrderCustInfo').innerText = "Full ID: " + o.id;
+            document.getElementById('modalOrderTotalText').innerText = "₹" + o.totalAmount + " (" + (o.paymentMethod || 'COD') + ")";
+
+            document.getElementById('modalOrderMetaBox').innerHTML = `
+                <b>Customer:</b> ${o.customerName} (${o.customerPhone})<br>
+                <b>Delivery Address:</b> ${o.customerAddress} — <b>PIN: ${o.customerPincode}</b><br>
+                <b>Order Date:</b> ${o.orderDateFormatted || 'N/A'} | <b>Status:</b> ${o.status}<br>
+                ${o.assignedBoyPhone ? `<b>Delivery Boy:</b> ${o.assignedBoyPhone}<br>` : ''}
+                ${o.cancelReason ? `<b style="color:#dc2626;">Cancel Reason:</b> ${o.cancelReason}` : ''}
+            `;
+
+            const container = document.getElementById('modalOrderItemsContainer');
+            container.innerHTML = (o.filteredItems || []).map(item => {
+                const img = item.imageUrl || (item.images && item.images[0]) || 'https://via.placeholder.com/80';
+                const variant = item.size || item.variant || 'Standard';
+                const qty = Number(item.qty || 1);
+                const price = Number(item.price || 0);
+
+                return `
+                    <div class="view-prod-row">
+                        <img src="${img}" alt="${item.name}">
+                        <div style="flex:1;">
+                            <strong style="font-size:13px; color:#0f172a; display:block;">${item.name}</strong>
+                            <span style="font-size:11px; color:#475569;">Variant / Size: <b>${variant}</b></span><br>
+                            <span style="font-size:12px; color:#ea580c; font-weight:800;">₹${price} × ${qty} = ₹${price * qty}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('viewOrderItemsModal').classList.add('active');
+        }
+
+        function closeViewOrderModal() {
+            document.getElementById('viewOrderItemsModal').classList.remove('active');
+        }
+
+        // ==================== ASSIGN DELIVERY BOY & STATUS ACTIONS ====================
+        function assignDeliveryBoyToOrder(orderId) {
+            const input = document.getElementById('boyInp_' + orderId);
+            const phone = (input ? input.value : '').trim();
+            if (!/^\d{10}$/.test(phone)) {
+                alert("Kripya Delivery Boy ka sahi 10-digit mobile number dalein!");
+                return;
+            }
+            db.collection("orders").doc(orderId).update({
+                assignedBoyPhone: phone,
+                status: "Assigned",
+                assignedByShop: activeMerchant.shopName,
+                assignedAt: new Date().toISOString()
+            }).then(() => {
+                alert("✅ Delivery Boy (" + phone + ") ko order assign ho gaya!");
+            }).catch(err => alert("Assign Error: " + err.message));
+        }
+
+        function cancelMerchantOrder(orderId) {
+            const reason = prompt("Order cancel karne ka karan likhein (e.g. Item out of stock / Shop closed):", "Item unavailable");
+            if (reason === null) return;
+
+            db.collection("orders").doc(orderId).update({
+                status: "Cancelled",
+                cancelReason: reason.trim() || "Cancelled by Merchant",
+                cancelledBy: activeMerchant.shopName,
+                closedAt: new Date().toISOString()
+            }).then(() => {
+                alert("❌ Order cancel ho gaya hai aur History me save kar diya gaya hai.");
+            }).catch(err => alert("Cancel Error: " + err.message));
+        }
+
+        function updateOrderStatus(orderId, newStatus) {
+            const payload = { status: newStatus };
+            if (newStatus === 'Delivered') {
+                payload.deliveredAt = new Date().toISOString();
+                payload.closedAt = new Date().toISOString();
+            }
+            db.collection("orders").doc(orderId).update(payload)
+                .then(() => {
+                    if (newStatus === 'Delivered') {
+                        alert("✅ Order Delivered! Ye order ab History aur Collection Report me add ho gaya hai.");
+                    } else {
+                        alert("✅ Order status updated: " + newStatus);
+                    }
+                })
+                .catch(err => alert("Error: " + err.message));
+        }
+
+        // ==================== THERMAL BILL PRINT (WITHOUT OTP) ====================
+        function printMerchantBill(orderId) {
+            const order = allShopOrdersCache[orderId];
+            if (!order) return alert("Order data nahi mila!");
+
+            const billBox = document.getElementById('merchantPrintableBill');
+            billBox.style.display = 'block';
+
+            const itemsHtml = (order.filteredItems || []).map(i => {
+                const variant = i.size || i.variant ? ` (${i.size || i.variant})` : '';
+                return `
+                    <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:3px;">
+                        <span>${i.name}${variant} x${i.qty || 1}</span>
+                        <span>₹${Number(i.price) * Number(i.qty || 1)}</span>
+                    </div>
+                `;
+            }).join('');
+
+            const deliveryCharge = Number(order.deliveryCharge || 0);
+            const subtotal = order.subtotal !== undefined ? order.subtotal : (Number(order.totalAmount) - deliveryCharge);
+            const gstLine = activeMerchant.gstin ? `<p style="margin:2px 0 0; font-size:10px;">GSTIN: ${activeMerchant.gstin}</p>` : '';
+
+            billBox.innerHTML = `
+                <div style="text-align:center; border-bottom:1px dashed #000; padding-bottom:5px; margin-bottom:5px;">
+                    <h3 style="margin:0; font-size:15px;">${activeMerchant.shopName.toUpperCase()}</h3>
+                    <p style="margin:0; font-size:10px;">Powered by KSINDO</p>
+                    ${gstLine}
+                    <p style="margin:2px 0 0; font-size:10px;">${order.orderDateFormatted || new Date().toLocaleString('en-IN')}</p>
+                </div>
+                <div style="font-size:11px; border-bottom:1px dashed #000; padding-bottom:5px; margin-bottom:5px;">
+                    <strong>Order:</strong> #${order.id.slice(-6).toUpperCase()}<br>
+                    <strong>Customer:</strong> ${order.customerName}<br>
+                    <strong>Phone:</strong> ${order.customerPhone}<br>
+                    <strong>Address:</strong> ${order.customerAddress} (PIN: ${order.customerPincode})
+                    ${order.assignedBoyPhone ? `<br><strong>Delivery Boy:</strong> ${order.assignedBoyPhone}` : ''}
+                </div>
+                <div style="border-bottom:1px dashed #000; padding-bottom:5px; margin-bottom:5px;">
+                    <div style="font-weight:bold; font-size:11px; margin-bottom:3px;">ITEMS:</div>
+                    ${itemsHtml}
+                </div>
+                <div style="font-size:11px; border-bottom:1px dashed #000; padding-bottom:5px; margin-bottom:5px;">
+                    <div style="display:flex; justify-content:space-between;"><span>Subtotal:</span><span>₹${subtotal}</span></div>
+                    <div style="display:flex; justify-content:space-between;"><span>Delivery Fee:</span><span>${deliveryCharge > 0 ? '₹' + deliveryCharge : 'FREE'}</span></div>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:13px; margin-bottom:6px;">
+                    <span>TOTAL PAYABLE:</span>
+                    <span>₹${order.totalAmount}</span>
+                </div>
+                <div style="text-align:center; font-size:10px; border-top:1px dashed #000; padding-top:5px;">
+                    Payment Mode: ${order.paymentMethod || 'COD'}<br>
+                    Thank you for ordering with KSINDO!
+                </div>
+            `;
+
+            window.print();
+            billBox.style.display = 'none';
+
+            if ((order.status || '').toLowerCase() === 'placed') {
+                db.collection("orders").doc(orderId).update({
+                    status: "Confirmed",
+                    billPrintedAt: new Date().toISOString()
+                }).catch(() => {});
+            }
+        }
+
+        // ==================== ADMIN-STYLE PRODUCT UPLOAD, VARIANTS & STOCK ====================
+        function checkSeasonalInput(val) {
+            const container = document.getElementById('festivalTagContainer');
+            container.style.display = (val === 'seasonal special' || val === 'shringar' || val === 'pooja') ? 'block' : 'none';
+        }
+
+        function calculateRowDiscount(row) {
+            const price = parseFloat(row.querySelector('.v-price').value);
+            const orig = parseFloat(row.querySelector('.v-orig-price').value);
+            const discPill = row.querySelector('.v-discount-pill');
+
+            if (!isNaN(price) && !isNaN(orig) && orig > price && price > 0) {
+                discPill.value = Math.round(((orig - price) / orig) * 100) + "% OFF";
+            } else {
+                discPill.value = '';
+            }
+        }
+
+        function addVariantRow(valName = '', valPrice = '', valOrigPrice = '', valDisc = '') {
+            const container = document.getElementById('variantsContainer');
+            const row = document.createElement('div');
+            row.className = 'variant-row';
+            row.innerHTML = `
+                <input type="text" placeholder="Size (e.g. 1kg, XL, Full)" value="${valName}" class="v-name" required>
+                <input type="number" placeholder="Price (₹)" value="${valPrice}" class="v-price" required>
+                <input type="number" placeholder="MRP (₹)" value="${valOrigPrice}" class="v-orig-price">
+                <input type="text" placeholder="Discount" value="${valDisc}" class="v-discount-pill" readonly style="background:#dcfce7; color:#15803d; font-weight:bold;">
+                <button type="button" onclick="this.parentElement.remove()" style="background:#ef4444; color:white; border:none; padding:7px 10px; border-radius:6px; cursor:pointer; font-weight:bold;">✕</button>
+            `;
+            row.querySelector('.v-price').addEventListener('input', () => calculateRowDiscount(row));
+            row.querySelector('.v-orig-price').addEventListener('input', () => calculateRowDiscount(row));
+            container.appendChild(row);
+            if (valPrice && valOrigPrice) calculateRowDiscount(row);
+        }
+
+        function compressImageFile(file, maxWidth, quality) {
+            return new Promise(resolve => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = event => {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        let w = img.width, h = img.height;
+                        if (w > maxWidth) {
+                            h = Math.round((h * maxWidth) / w);
+                            w = maxWidth;
+                        }
+                        canvas.width = w;
+                        canvas.height = h;
+                        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                        resolve(canvas.toDataURL('image/jpeg', quality));
+                    };
+                };
+            });
+        }
+
+        async function previewSelectedFiles(input) {
+            const container = document.getElementById('photoPreviewContainer');
+            container.innerHTML = '<span style="font-size:12px; color:#ea580c; font-weight:bold;">⚡ Compressing images...</span>';
+            base64PhotosArray = [];
+
+            if (input.files.length > 6) {
+                alert("Maximum 6 photos allowed hain!");
+                input.value = '';
+                container.innerHTML = '';
+                return;
+            }
+
+            for (let f of Array.from(input.files)) {
+                const compressed = await compressImageFile(f, 800, 0.72);
+                base64PhotosArray.push(compressed);
+            }
+
+            container.innerHTML = '';
+            base64PhotosArray.forEach(src => {
+                const img = document.createElement('img');
+                img.src = src;
+                img.className = 'preview-box';
+                container.appendChild(img);
+            });
+        }
+
+        document.getElementById('merchantProductForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const editId = document.getElementById('editProductId').value;
+            const name = document.getElementById('prodName').value.trim();
+            const subCategory = document.getElementById('prodSubCategory').value;
+            const festivalTag = document.getElementById('prodFestivalTag').value.trim().toLowerCase().replace(/\s+/g, '-');
+            const desc = document.getElementById('prodDesc').value.trim();
+            const imgLink = document.getElementById('prodImageLink').value.trim();
+
+            const selectedCats = Array.from(document.querySelectorAll('input[name="productCats"]:checked')).map(cb => cb.value);
+            if (selectedCats.length === 0) return alert("Kam se kam ek Category select karein!");
+
+            const vNames = document.querySelectorAll('#variantsContainer .v-name');
+            const vPrices = document.querySelectorAll('#variantsContainer .v-price');
+            const vOrigPrices = document.querySelectorAll('#variantsContainer .v-orig-price');
+            let variantsList = [];
+
+            vNames.forEach((nEl, idx) => {
+                const vName = nEl.value.trim();
+                const vPrice = Number(vPrices[idx].value);
+                const vOrig = Number(vOrigPrices[idx].value) || '';
+                if (vName && !isNaN(vPrice) && vPrice > 0) {
+                    let vDisc = (vOrig && vOrig > vPrice) ? Math.round(((vOrig - vPrice) / vOrig) * 100) + '% OFF' : '';
+                    variantsList.push({ size: vName, price: vPrice, originalPrice: vOrig, discount: vDisc });
+                }
+            });
+
+            if (variantsList.length === 0) return alert("Kam se kam 1 Size/Variant add karein!");
+
+            const existingProd = editId ? merchantProductsCache.find(x => x.id === editId) : null;
+            let photos = [];
+            if (base64PhotosArray.length > 0) photos = base64PhotosArray;
+            else if (imgLink) photos = [imgLink];
+            else if (existingProd) photos = existingProd.images || [existingProd.imageUrl];
+            else return alert("Photo link dalein ya 1-6 photos upload karein!");
+
+            const pinList = document.getElementById('prodPincodes').value
+                .split(',').map(x => x.trim()).filter(x => /^\d{6}$/.test(x));
+            if (pinList.length === 0 && activeMerchant.pincode) {
+                pinList.push(String(activeMerchant.pincode));
+            }
+
+            const stockVal = document.getElementById('prodStockStatus').value;
+            const isInStock = stockVal !== 'out';
+            const btn = document.getElementById('productSubmitBtn');
+            btn.disabled = true;
+            btn.innerText = "Saving...";
+
+            try {
+                const productData = {
+                    name,
+                    price: variantsList[0].price,
+                    originalPrice: variantsList[0].originalPrice || '',
+                    discount: variantsList[0].discount || '',
+                    categories: selectedCats,
+                    category: selectedCats[0],
+                    subCategory,
+                    festivalTag: festivalTag || '',
+                    description: desc,
+                    inStock: isInStock,
+                    isAvailable: isInStock,
+                    stockStatus: isInStock ? 'in' : 'out',
+                    availablePincodes: pinList,
+                    pincode: String(activeMerchant.pincode),
+                    imageUrl: photos[0],
+                    images: photos,
+                    hasVariants: true,
+                    sizes: variantsList,
+                    unit: variantsList[0].size,
+                    weight: variantsList[0].size,
+                    assignedShopId: activeMerchant.id,
+                    assignedShopName: activeMerchant.shopName,
+                    shopName: activeMerchant.shopName,
+                    isKsindoStore: isKsindoOfficialStore(activeMerchant)
+                };
+
+                if (editId) {
+                    await db.collection("products").doc(editId).update({
+                        ...productData,
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    alert("✅ Product update ho gaya!");
+                } else {
+                    await db.collection("products").add({
+                        ...productData,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    alert("✅ Product publish ho gaya!");
+                }
+
+                resetProductForm();
+                switchDashTab('myProds');
+            } catch (err) {
+                alert("Error: " + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Publish Product";
+            }
+        });
+
+        function editMerchantProduct(prodId) {
+            const p = merchantProductsCache.find(item => item.id === prodId);
+            if (!p) return;
+
+            document.getElementById('editProductId').value = prodId;
+            document.getElementById('prodName').value = p.name || '';
+            document.getElementById('prodSubCategory').value = p.subCategory || 'none';
+            document.getElementById('prodImageLink').value = p.imageUrl || '';
+            document.getElementById('prodDesc').value = p.description || '';
+            document.getElementById('prodStockStatus').value = (p.inStock === false || p.stockStatus === 'out' || p.stockStatus === 'out_of_stock') ? 'out' : 'in';
+            document.getElementById('prodPincodes').value = (p.availablePincodes || [activeMerchant.pincode]).join(', ');
+
+            if (p.festivalTag) {
+                document.getElementById('festivalTagContainer').style.display = 'block';
+                document.getElementById('prodFestivalTag').value = p.festivalTag;
+            } else {
+                document.getElementById('festivalTagContainer').style.display = 'none';
+            }
+
+            const selectedCats = p.categories || [p.category];
+            document.querySelectorAll('input[name="productCats"]').forEach(cb => {
+                cb.checked = selectedCats.includes(cb.value);
+            });
+
+            const container = document.getElementById('variantsContainer');
+            container.innerHTML = '';
+            if (p.sizes && p.sizes.length > 0) {
+                p.sizes.forEach(v => addVariantRow(v.size, v.price, v.originalPrice, v.discount || ''));
+            } else {
+                addVariantRow(p.unit || 'Default', p.price, p.originalPrice || '', p.discount || '');
+            }
+
+            document.getElementById('productFormHeader').innerText = '✏️ Edit Product: ' + p.name;
+            document.getElementById('productSubmitBtn').innerText = 'Update Product';
+            document.getElementById('cancelEditBtn').style.display = 'inline-block';
+
+            switchDashTab('addProd');
+        }
+
+        function resetProductForm() {
+            document.getElementById('merchantProductForm').reset();
+            document.getElementById('editProductId').value = '';
+            document.getElementById('productFormHeader').innerText = '🏷️ Add / Edit Product (Admin Catalog System)';
+            document.getElementById('productSubmitBtn').innerText = 'Publish Product';
+            document.getElementById('cancelEditBtn').style.display = 'none';
+            document.getElementById('photoPreviewContainer').innerHTML = '';
+            document.getElementById('variantsContainer').innerHTML = '';
+            document.getElementById('festivalTagContainer').style.display = 'none';
+            document.getElementById('prodPincodes').value = activeMerchant ? activeMerchant.pincode : '';
+            base64PhotosArray = [];
+            addVariantRow();
+        }
+
+        function listenToMerchantProducts() {
+            db.collection("products")
+                .where("assignedShopId", "==", activeMerchant.id)
+                .onSnapshot(snap => {
+                    merchantProductsCache = [];
+                    snap.forEach(doc => merchantProductsCache.push({ id: doc.id, ...doc.data() }));
+                    renderMerchantProducts();
+                });
+        }
+
+        function renderMerchantProducts() {
+            const grid = document.getElementById('merchantProductsGrid');
+            if (merchantProductsCache.length === 0) {
+                grid.innerHTML = '<p style="grid-column:1/-1; text-align:center; padding:25px; background:white; border-radius:14px; color:#64748b;">Abhi tak koi product upload nahi kiya gaya hai.</p>';
+                return;
+            }
+
+            grid.innerHTML = merchantProductsCache.map(p => {
+                const inStock = p.inStock !== false && p.stockStatus !== 'out' && p.stockStatus !== 'out_of_stock';
+                const vCount = Array.isArray(p.sizes) ? p.sizes.length : 1;
+                return `
+                    <div class="prod-item-card">
+                        <img src="${p.imageUrl || 'https://via.placeholder.com/80'}" alt="${p.name}">
+                        <div style="flex:1;">
+                            <strong style="font-size:13px; display:block;">${p.name}</strong>
+                            <span style="color:#ea580c; font-weight:900; font-size:14px;">₹${p.price}</span>
+                            ${p.originalPrice ? `<small style="text-decoration:line-through; color:#94a3b8;">₹${p.originalPrice}</small>` : ''}<br>
+                            <span class="stock-pill ${inStock ? 'in-stock' : 'out-stock'}">${inStock ? 'In Stock' : 'Out of Stock'}</span>
+                            <span class="stock-pill" style="background:#e0f2fe; color:#0369a1;">${vCount} Variants</span>
+                            <div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">
+                                <button class="btn-sm" style="background:#0284c7; padding:5px 9px;" onclick="editMerchantProduct('${p.id}')">✏️ Edit</button>
+                                <button class="btn-sm" style="background:${inStock ? '#dc2626' : '#16a34a'}; padding:5px 9px;" onclick="quickToggleStock('${p.id}', ${inStock})">
+                                    ${inStock ? 'Out of Stock' : 'In Stock'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function quickToggleStock(prodId, currentlyInStock) {
+            db.collection("products").doc(prodId).update({
+                inStock: !currentlyInStock,
+                isAvailable: !currentlyInStock,
+                stockStatus: currentlyInStock ? 'out' : 'in'
+            });
+        }
+
+        // Auto-open dashboard if already logged in
+        if (activeMerchant && activeMerchant.id) {
+            openMerchantDashboard();
+        }
+    </script>
+</body>
+</html>
